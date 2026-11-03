@@ -24,10 +24,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 public enum BrimApp {
-    /// 开起来。boxAccessories 是收纳格面板里图标下面多出来的几块；开源版不传。
+    /// 开起来。boxAccessories 是收纳格面板里图标下面多出来的几块，glyphs 是收纳格多出来的样子；开源版都不传。
     @MainActor
-    public static func run(boxAccessories: [BoxAccessory] = []) -> Never {
+    public static func run(boxAccessories: [BoxAccessory] = [], glyphs: [BoxGlyph] = []) -> Never {
         Extensions.boxAccessories = boxAccessories
+        Extensions.glyphs = glyphs
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate
