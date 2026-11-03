@@ -5,17 +5,14 @@ import ServiceManagement
 import SwiftUI
 
 /// 设置窗口左边的几页（照 design/brim-design.html 的“brim 的设置窗口”，只放现在真能用的项）。
-/// agents 那一页由扩展提供（NotchContent.settingsPage），没装扩展就没有。
 enum SettingsPage: String, CaseIterable, Identifiable {
-    case notch, stash, agents, permissions, general
+    case stash, permissions, general
     /// 侧栏按 id 认选中的是哪一行，id 就用这一页本身，和侧栏选中的值同一类型，点了才切得过去
     var id: Self { self }
 
     @MainActor var title: String {
         switch self {
-        case .notch: L("顶部面板", "Top Panel")
         case .stash: L("收纳", "Stash")
-        case .agents: Extensions.notch?.settingsPage?.title ?? "Agent"
         case .permissions: L("权限", "Permissions")
         case .general: L("通用", "General")
         }
@@ -23,23 +20,16 @@ enum SettingsPage: String, CaseIterable, Identifiable {
 
     @MainActor var symbol: String {
         switch self {
-        case .notch: "rectangle.topthird.inset.filled"
         case .stash: "tray"
-        case .agents: Extensions.notch?.settingsPage?.symbol ?? "puzzlepiece"
         case .permissions: "lock.shield"
         case .general: "gearshape"
         }
-    }
-
-    /// 侧栏上真有的几页
-    @MainActor static var shown: [SettingsPage] {
-        allCases.filter { $0 != .agents || Extensions.notch?.settingsPage != nil }
     }
 }
 
 @MainActor @Observable
 final class SettingsNav {
-    var page: SettingsPage? = .notch
+    var page: SettingsPage? = .stash
 }
 
 /// 开机自动打开：用系统的登录项。要用户在系统设置里点“允许”时，状态是 requiresApproval。
@@ -63,7 +53,7 @@ final class LoginItem {
     func refresh() { status = SMAppService.mainApp.status }
 }
 
-/// brim 的设置窗口。平时用不着：右键帽檐或刘海选“设置…”才出来。
+/// brim 的设置窗口。平时用不着：右键收纳格选“设置…”才出来。
 @MainActor
 final class SettingsWindow {
     static weak var shared: SettingsWindow?
@@ -71,17 +61,15 @@ final class SettingsWindow {
     private let nav = SettingsNav()
     private let login = LoginItem()
     private let stash: MenuBarStash
-    private let notch: NotchModel
     private var window: NSWindow?
 
-    init(stash: MenuBarStash, notch: NotchModel) {
+    init(stash: MenuBarStash) {
         self.stash = stash
-        self.notch = notch
         Self.shared = self
     }
 
     func show(_ page: SettingsPage? = nil) {
-        if let page, SettingsPage.shown.contains(page) { nav.page = page }
+        if let page { nav.page = page }
         if window == nil {
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 780, height: 620),
                              styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -92,7 +80,7 @@ final class SettingsWindow {
             w.toolbar = NSToolbar(identifier: "brim.settings")
             w.toolbarStyle = .unified
             w.isReleasedWhenClosed = false
-            w.contentView = NSHostingView(rootView: SettingsView(nav: nav, login: login, stash: stash, notch: notch))
+            w.contentView = NSHostingView(rootView: SettingsView(nav: nav, login: login, stash: stash))
             w.setFrameAutosaveName("brim.settings")
             if !w.setFrameUsingName("brim.settings") { w.center() }
             window = w
@@ -110,20 +98,17 @@ struct SettingsView: View {
     @Bindable var nav: SettingsNav
     let login: LoginItem
     let stash: MenuBarStash
-    @Bindable var notch: NotchModel
 
     var body: some View {
         NavigationSplitView {
-            List(SettingsPage.shown, selection: $nav.page) { page in
+            List(SettingsPage.allCases, selection: $nav.page) { page in
                 Label(page.title, systemImage: page.symbol)
                     .badge(page == .permissions ? permissionsToDo : 0)
             }
             .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 220)
         } detail: {
-            switch nav.page ?? .notch {
-            case .notch: notchPage
+            switch nav.page ?? .stash {
             case .stash: OrganizerView(stash: stash)
-            case .agents: Extensions.notch?.settingsPage?.view() ?? AnyView(EmptyView())
             case .permissions: permissionsPage
             case .general: generalPage
             }
@@ -143,35 +128,6 @@ struct SettingsView: View {
         (stash.trusted ? 0 : 1) + (AppLocation.isInApplications ? 0 : 1)
     }
 
-    // MARK: 刘海
-
-    private var notchPage: some View {
-        Form {
-            Section {
-                Picker(selection: Binding(get: { notch.side }, set: { notch.side = $0; notch.startGrow() })) {
-                    Text(L("左侧", "Left")).tag(PineSide.left)
-                    Text(L("右侧", "Right")).tag(PineSide.right)
-                } label: {
-                    Text(L("松树位置", "Pine position"))
-                    Text(L("更改后松树会在新的一侧重新播放生长动画", "The pine replays its growth animation on the new side"))
-                }
-                .pickerStyle(.segmented)
-                .fixedSize()
-                Picker(selection: $notch.openDelay) {
-                    ForEach([0.2, 0.3, 0.5, 0.8], id: \.self) { s in Text(L("\(s.formatted()) 秒", "\(s.formatted()) s")).tag(s) }
-                } label: {
-                    Text(L("展开前的停留时间", "Delay before opening"))
-                    Text(L("太短的话，鼠标经过时容易误展开", "Too short and it opens when the pointer just passes by"))
-                }
-                .fixedSize()
-            }
-            Section {
-                Button(L("重播生长动画", "Replay Growth Animation")) { notch.startGrow() }
-            }
-        }
-        .formStyle(.grouped)
-    }
-
     // MARK: 权限
 
     private var permissionsPage: some View {
@@ -185,7 +141,7 @@ struct SettingsView: View {
                     }
                 } label: {
                     Text(L("辅助功能", "Accessibility"))
-                    Text(L("收纳功能需要：读取菜单栏上的图标并替你打开。不开启的话顶部面板照常可用，收纳不可用。", "Needed for Stash: reading menu bar icons and opening them for you. Without it the top panel still works, but Stash doesn't."))
+                    Text(L("收纳功能需要：读取菜单栏上的图标并替你打开。不开启的话收纳不可用。", "Needed for Stash: reading menu bar icons and opening them for you. Without it, Stash doesn't work."))
                 }
                 LabeledContent {
                     if AppLocation.isInApplications {

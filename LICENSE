@@ -29,7 +29,6 @@ Copyright (c) 2026 lblus, all rights reserved:
 
 - the name "sniai brim";
 - the app icon (Resources/AppIcon.icns);
-- the pixel pine artwork (the pixel map in Sources/BrimCore/Pine.swift);
 - the box designs (the pixel maps in Sources/BrimKit/Glyphs.swift).
 
 You may use these assets to build and run brim from this repository. If you

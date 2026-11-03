@@ -4,7 +4,7 @@ import QuartzCore
 
 /// 打开“菜单只能挂在自己图标上”的 app 时的动画，用户在设置里选
 enum HandoffStyle: String, CaseIterable, Identifiable {
-    /// 岛：点中的那一格变成一颗黑色胶囊（和顶部面板同一种黑），带着图标升到菜单栏
+    /// 岛：点中的那一格变成一颗黑色胶囊，带着图标升到菜单栏
     case island
     /// 归位：图标从格子里浮起，沿一道弧线飞回它在菜单栏上的位置
     case flight
@@ -44,7 +44,7 @@ final class HandoffAnimator {
     var isActive: Bool { window != nil }
 
     static let capsule = NSSize(width: 46, height: 26)
-    /// 院子色的青绿（Theme.leaf）
+    /// 院子色的青绿（临时值）
     static let leaf = NSColor(red: 0.33, green: 0.70, blue: 0.60, alpha: 1)
 
     /// 开始：图标还在收纳格那一格里（cell），面板在 panel，帽檐在 box。

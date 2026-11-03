@@ -1,6 +1,6 @@
 # sniai brim
 
-A small pixel pine grows beside your MacBook's camera housing, and your menu bar icons go into boxes you set up yourself.
+Put your menu bar icons into boxes you set up yourself. Click a box and the icons inside are right there, menus included.
 
 [中文说明](#中文)
 
@@ -48,17 +48,17 @@ swift test
 ./scripts/release.sh              # build/Brim-<version>.zip and its SHA-256
 ```
 
-`BrimKit` exposes two extension points in `Sources/BrimKit/Extensions.swift`: `NotchContent` (what the top panel shows when it opens) and `BoxAccessory` (an extra section under a box's icons).
+`BrimKit` has one extension point, `BoxAccessory` in `Sources/BrimKit/Extensions.swift`: an extra section under a box's icons.
 
 ## License
 
-Code: MIT, © 2026 lblus. The name *sniai brim*, the app icon, the pixel pine and the box designs are not covered by the MIT license; see [LICENSE](LICENSE).
+Code: MIT, © 2026 lblus. The name *sniai brim*, the app icon and the box designs are not covered by the MIT license; see [LICENSE](LICENSE).
 
 ---
 
 ## 中文
 
-MacBook 屏幕顶上，摄像头旁边长出一棵像素小松；菜单栏上的图标，按你自己的习惯收进几个收纳格。
+菜单栏上的图标，按你自己的习惯收进几个收纳格。点开一格，里面的图标连同它们的菜单都在手边。
 
 ### 能做什么
 
@@ -100,4 +100,4 @@ brim 通过私有框架 `MenuBarClientCore` 告诉系统“菜单栏上只显示
 
 ### 许可
 
-代码用 MIT 许可，版权归 lblus。名称 sniai brim、App 图标、像素松和收纳格的样子不在 MIT 许可范围内，见 [LICENSE](LICENSE)。
+代码用 MIT 许可，版权归 lblus。名称 sniai brim、App 图标和收纳格的样子不在 MIT 许可范围内，见 [LICENSE](LICENSE)。

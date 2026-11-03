@@ -122,7 +122,7 @@ struct OrganizerView: View {
     private var permission: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L("请先允许 brim 使用“辅助功能”", "Allow brim to use Accessibility")).font(.title3.weight(.semibold))
-            Text(L("brim 需要读取菜单栏上有哪些图标，并在你点击收纳格里的图标时替你打开它的菜单，这要用到系统的“辅助功能”权限。顶部面板不需要这个权限。", "brim needs to see which icons are in the menu bar and open an icon's menu when you click it in a box. This uses the system's Accessibility permission. The top panel doesn't need it."))
+            Text(L("brim 需要读取菜单栏上有哪些图标，并在你点击收纳格里的图标时替你打开它的菜单，这要用到系统的“辅助功能”权限。", "brim needs to see which icons are in the menu bar and open an icon's menu when you click it in a box. This uses the system's Accessibility permission."))
                 .foregroundStyle(.secondary)
             Text(L("点击下面的按钮，brim 会打开对应的设置页并说明怎么做。打开后这里会自动刷新。", "Click the button below. brim opens the right settings page and shows you what to do. This page updates once it's on."))
                 .foregroundStyle(.secondary)
