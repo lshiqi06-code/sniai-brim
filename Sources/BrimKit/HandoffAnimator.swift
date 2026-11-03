@@ -50,7 +50,7 @@ final class HandoffAnimator {
     /// 开始：图标还在收纳格那一格里（cell），面板在 panel，帽檐在 box。
     /// guess 是它隐藏前在菜单栏上的位置：一开始就朝那里去，等系统量出准确位置（land）再顺一下，不在原地干等
     func begin(image: NSImage, tint: NSColor, cell: NSRect, panel: NSRect, box: NSRect, guess: NSRect?) {
-        guard let screen = NSScreen.screens.first, let (iconLayer, backLayer) = prepare(image: image, tint: tint, box: box) else { return }
+        guard let (iconLayer, backLayer) = prepare(image: image, tint: tint, box: box) else { return }
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -73,11 +73,11 @@ final class HandoffAnimator {
             iconLayer.position = local(NSPoint(x: cell.midX, y: cell.midY))
             CATransaction.commit()
             animate(backLayer, "opacity", from: 0, to: 1, duration: 0.1)
-            let barY = screen.frame.maxY - 2 - Self.capsule.height / 2
-            let x = guess?.midX ?? box.midX
-            let to = CGRect(x: x - Self.capsule.width / 2, y: barY - Self.capsule.height / 2,
-                            width: Self.capsule.width, height: Self.capsule.height)
-            morph(backLayer, to: local(to), radius: Self.capsule.height / 2, duration: 0.5)
+            // 胶囊落在它隐藏前那一格上、和那一格一样大；没有位置时落在帽檐左边
+            let spot = guess ?? NSRect(x: box.minX - 30, y: box.minY, width: 24, height: box.height)
+            let size = capsuleSize(for: spot)
+            let to = CGRect(x: spot.midX - size.width / 2, y: spot.midY - size.height / 2, width: size.width, height: size.height)
+            morph(backLayer, to: local(to), radius: size.height / 2, duration: 0.5)
             fly(iconLayer, to: local(NSPoint(x: to.midX, y: to.midY)), lift: 0, duration: 0.5, delay: 0)
         }
     }
@@ -142,25 +142,30 @@ final class HandoffAnimator {
         case .island:
             let size = capsuleSize(for: target)
             morph(backLayer, to: CGRect(x: center.x - size.width / 2, y: center.y - size.height / 2, width: size.width, height: size.height),
-                  radius: size.height / 2, duration: 0.34)
-            after(0.34) { [weak self] in
+                  radius: size.height / 2, duration: 0.3)
+            after(0.3) { [weak self] in
                 guard let self else { return }
                 // 盖住了：图标在胶囊里亮起来，真图标消失
-                self.animate(iconLayer, "opacity", from: 0, to: 1, duration: 0.1)
+                self.animate(iconLayer, "opacity", from: 0, to: 1, duration: 0.08)
                 hide()
-                // 系统淡出真图标要一点时间，等它消失了胶囊再走，不留残影
-                self.after(0.36) {
-                    self.goHome(iconLayer, backLayer, duration: 0.4, done: done)
+                // 系统拿掉真图标要一点时间，等它没了胶囊再走，不留残影；再久旁边的图标就开始往这边挪了（录屏逐帧看过）
+                self.after(0.12) {
+                    self.goHome(iconLayer, backLayer, duration: 0.32, done: done)
                 }
             }
         case .flight:
             hide()
-            fly(iconLayer, to: boxCenter, lift: 12, duration: 0.42, delay: 0)
-            animate(iconLayer, "transform.scale", from: 1, to: 0.5, duration: 0.42)
-            animate(iconLayer, "opacity", from: 1, to: 0, duration: 0.42)
-            after(0.42) { [weak self] in
-                self?.cancel()
-                done()
+            // 先在原地拎起来一点、盖住真图标：系统把真图标淡掉要 0.2 秒左右，马上飞走的话原地会同时看到两个（录屏逐帧看过）
+            animate(iconLayer, "transform.scale", from: 1, to: 1.12, duration: 0.16)
+            after(0.18) { [weak self] in
+                guard let self else { return }
+                self.fly(iconLayer, to: boxCenter, lift: 12, duration: 0.34, delay: 0)
+                self.animate(iconLayer, "transform.scale", from: 1.12, to: 0.5, duration: 0.34)
+                self.animate(iconLayer, "opacity", from: 1, to: 0, duration: 0.17, delay: 0.17)
+                self.after(0.34) {
+                    self.cancel()
+                    done()
+                }
             }
         }
     }
@@ -184,32 +189,50 @@ final class HandoffAnimator {
             backLayer.opacity = 0
         }
         CATransaction.commit()
-        let duration = 0.42
+        let duration = 0.4
         fly(iconLayer, to: first, lift: style == .island ? 0 : 12, duration: duration, delay: 0)
         if style == .island {
             morph(backLayer, to: CGRect(x: first.x - size.width / 2, y: first.y - size.height / 2, width: size.width, height: size.height),
                   radius: size.height / 2, duration: duration)
         }
         after(0.1, reveal)
+        // 估计的位置常常差好几点（系统给每个图标的范围宽窄不一，两个图标之间从 -2 到 15 点都有）。
+        // 所以边飞边量：每 0.03 秒读一次它的真实位置，系统一放好就接着当前的速度改飞过去，只落一次。
+        // 原来是先落到估计的位置再挪，录屏里看就是冲过头 8 点又退回来
+        let stale = actual()
+        var aim = (point: first, size: size)
+        let start = Date()
+        func track() {
+            after(0.03) { [weak self] in
+                guard let self else { return }
+                let elapsed = Date().timeIntervalSince(start)
+                let rest = duration - elapsed
+                guard rest > 0.06 else { return }
+                // 隐藏着时读到的是旧位置；变了（或者过了 0.25 秒系统肯定放好了）才算数
+                if let real = actual(), real.width > 0, real != stale || elapsed > 0.25 {
+                    let p = self.local(NSPoint(x: real.midX, y: real.midY))
+                    let s = self.capsuleSize(for: real)
+                    if hypot(p.x - aim.point.x, p.y - aim.point.y) > 0.5 || s != aim.size {
+                        aim = (p, s)
+                        self.fly(iconLayer, to: p, lift: 0, duration: rest, delay: 0, curve: Self.carryOn)
+                        if self.style == .island {
+                            self.morph(backLayer, to: CGRect(x: p.x - s.width / 2, y: p.y - s.height / 2, width: s.width, height: s.height),
+                                       radius: s.height / 2, duration: rest, curve: Self.carryOn)
+                        }
+                    }
+                }
+                track()
+            }
+        }
+        after(0.1) { track() }
+        // 落到位就化开，露出底下的真图标
         after(duration) { [weak self] in
             guard let self else { return }
-            // 量真实位置，有偏差就再顺一下，然后化开，露出底下的真图标
-            var settle = 0.0
-            if let real = actual().map({ self.local(NSPoint(x: $0.midX, y: $0.midY)) }), hypot(real.x - first.x, real.y - first.y) > 4 {
-                settle = 0.16
-                self.fly(iconLayer, to: real, lift: 0, duration: settle, delay: 0)
-                if self.style == .island {
-                    self.morph(backLayer, to: CGRect(x: real.x - size.width / 2, y: real.y - size.height / 2, width: size.width, height: size.height),
-                               radius: size.height / 2, duration: settle)
-                }
-            }
-            self.after(settle + 0.08) {
-                self.animate(iconLayer, "opacity", from: 1, to: 0, duration: 0.22)
-                if self.style == .island { self.animate(backLayer, "opacity", from: 1, to: 0, duration: 0.22) }
-                self.after(0.22) {
-                    self.cancel()
-                    done()
-                }
+            self.animate(iconLayer, "opacity", from: 1, to: 0, duration: 0.16)
+            if self.style == .island { self.animate(backLayer, "opacity", from: 1, to: 0, duration: 0.16) }
+            self.after(0.16) {
+                self.cancel()
+                done()
             }
         }
     }
@@ -219,17 +242,19 @@ final class HandoffAnimator {
         let boxCenter = local(NSPoint(x: box.midX, y: box.midY))
         fly(icon, to: boxCenter, lift: 0, duration: duration, delay: 0)
         animate(icon, "transform.scale", from: 1, to: 0.6, duration: duration)
-        animate(icon, "opacity", from: 1, to: 0, duration: duration * 0.4, delay: duration * 0.6)
-        morph(back, to: CGRect(x: boxCenter.x - 11, y: boxCenter.y - 11, width: 22, height: 22), radius: 11, duration: duration)
-        animate(back, "opacity", from: 1, to: 0, duration: duration * 0.4, delay: duration * 0.6)
+        animate(icon, "opacity", from: 1, to: 0, duration: duration * 0.5, delay: duration * 0.5)
+        morph(back, to: CGRect(x: boxCenter.x - 9, y: boxCenter.y - 9, width: 18, height: 18), radius: 9, duration: duration)
+        animate(back, "opacity", from: 1, to: 0, duration: duration * 0.5, delay: duration * 0.5)
         after(duration) { [weak self] in
             self?.cancel()
             done()
         }
     }
 
+    /// 胶囊正好盖住图标那一格：比它宽 2 点，比它矮 2 点（原来固定 26 点高、至少 46 点宽，会超出那一格）
     private func capsuleSize(for target: NSRect) -> NSSize {
-        NSSize(width: max(Self.capsule.width, target.width + 8), height: Self.capsule.height)
+        guard target.width > 0, target.height > 0 else { return Self.capsule }
+        return NSSize(width: target.width + 2, height: min(target.height - 2, Self.capsule.height))
     }
 
     private func after(_ seconds: Double, _ f: @escaping () -> Void) {
@@ -271,10 +296,9 @@ final class HandoffAnimator {
             CATransaction.commit()
             animate(back, "opacity", from: 0, to: 1, duration: 0.2, delay: duration * 0.8)
         case .island:
-            let barY = screen.frame.maxY - 2 - Self.capsule.height / 2
-            let to = CGRect(x: center.x - Self.capsule.width / 2, y: barY - Self.capsule.height / 2,
-                            width: Self.capsule.width, height: Self.capsule.height)
-            morph(back, to: local(to), radius: Self.capsule.height / 2, duration: duration)
+            let size = capsuleSize(for: target)
+            let to = CGRect(x: center.x - size.width / 2, y: center.y - size.height / 2, width: size.width, height: size.height)
+            morph(back, to: local(to), radius: size.height / 2, duration: duration)
             fly(icon, to: local(NSPoint(x: to.midX, y: to.midY)), lift: 0, duration: duration, delay: 0)
         }
     }
@@ -319,8 +343,13 @@ final class HandoffAnimator {
 
     // MARK: 小工具
 
+    /// 所有动作用同一条曲线：起步平、结尾干脆收住。原来的 (0.3, 0.7, 0.2, 1) 一开始猛冲、最后一大段在慢慢蹭，看着拖泥带水
+    static let curve = CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1)
+    /// 半路改目标时用：接着原来的速度走，只在结尾减速，中间不顿一下
+    static let carryOn = CAMediaTimingFunction(controlPoints: 0, 0, 0.2, 1)
+
     /// 沿一道向上拱起的弧飞到 to（lift 是拱起多高）；lift 为 0 就走直线，和胶囊的路线一样
-    private func fly(_ layer: CALayer, to: CGPoint, lift: CGFloat, duration: Double, delay: Double) {
+    private func fly(_ layer: CALayer, to: CGPoint, lift: CGFloat, duration: Double, delay: Double, curve: CAMediaTimingFunction = HandoffAnimator.curve) {
         let from = (layer.presentation() ?? layer).position
         let path = CGMutablePath()
         path.move(to: from)
@@ -335,7 +364,7 @@ final class HandoffAnimator {
         // 不延迟就不写开始时间：新窗口第一帧上屏要一点时间，写了当前时间它就比胶囊先走一截
         if delay > 0 { move.beginTime = CACurrentMediaTime() + delay }
         move.fillMode = .both
-        move.timingFunction = CAMediaTimingFunction(controlPoints: 0.3, 0.7, 0.2, 1)
+        move.timingFunction = curve
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         layer.position = to
@@ -360,7 +389,7 @@ final class HandoffAnimator {
         a.duration = duration
         if delay > 0 { a.beginTime = CACurrentMediaTime() + delay }
         a.fillMode = .both
-        a.timingFunction = CAMediaTimingFunction(controlPoints: 0.3, 0.7, 0.2, 1)
+        a.timingFunction = Self.curve
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         layer.setValue(to, forKeyPath: key)
@@ -369,7 +398,7 @@ final class HandoffAnimator {
     }
 
     /// 胶囊变形：位置、大小、圆角一起动
-    private func morph(_ layer: CALayer, to frame: CGRect, radius: CGFloat, duration: Double) {
+    private func morph(_ layer: CALayer, to frame: CGRect, radius: CGFloat, duration: Double, curve: CAMediaTimingFunction = HandoffAnimator.curve) {
         let from = layer.presentation() ?? layer
         let group = CAAnimationGroup()
         let pos = CABasicAnimation(keyPath: "position")
@@ -383,7 +412,7 @@ final class HandoffAnimator {
         corner.toValue = radius
         group.animations = [pos, size, corner]
         group.duration = duration
-        group.timingFunction = CAMediaTimingFunction(controlPoints: 0.3, 0.7, 0.2, 1)
+        group.timingFunction = curve
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         layer.position = CGPoint(x: frame.midX, y: frame.midY)
