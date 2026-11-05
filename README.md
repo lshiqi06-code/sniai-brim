@@ -52,7 +52,7 @@ swift test
 
 ## License
 
-Code: MIT, © 2026 lblus. The name *sniai brim*, the app icon and the box designs are not covered by the MIT license; see [LICENSE](LICENSE).
+Code: MIT, © 2026 lblus. The name *sniai brim*, the app icon and the box designs are not covered by the MIT license; see [BRAND.md](BRAND.md).
 
 ---
 
@@ -100,4 +100,4 @@ brim 通过私有框架 `MenuBarClientCore` 告诉系统“菜单栏上只显示
 
 ### 许可
 
-代码用 MIT 许可，版权归 lblus。名称 sniai brim、App 图标和收纳格的样子不在 MIT 许可范围内，见 [LICENSE](LICENSE)。
+代码用 MIT 许可，版权归 lblus。名称 sniai brim、App 图标和收纳格的样子不在 MIT 许可范围内，见 [BRAND.md](BRAND.md)。

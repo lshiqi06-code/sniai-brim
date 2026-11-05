@@ -3,6 +3,7 @@ import BrimCore
 
 /// 收纳格可以挑的样子。前几个是 brim 自己画的像素小图（院子里的东西），后几个用系统图标；
 /// 扩展（Extensions.glyphs，比如收费版的图标包）多出来的排在最后。
+/// 这里的像素图不在 MIT 许可范围内，见 BRAND.md。
 @MainActor
 enum Glyph {
     static var options: [(id: String, name: String)] { base + Extensions.glyphs.map { ($0.id, L($0.zh, $0.en)) } }

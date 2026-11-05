@@ -38,7 +38,7 @@ else
   echo "✓ 没有字体文件"
 fi
 
-for f in README.md LICENSE; do
+for f in README.md LICENSE BRAND.md; do
   if [[ -f "$f" ]]; then echo "✓ 有 $f"; else echo "✗ 缺 $f"; fail=1; fi
 done
 
