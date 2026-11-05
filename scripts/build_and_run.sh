@@ -18,7 +18,8 @@ cp "$RES/Info.plist" "$APP/Contents/Info.plist"
 cp "$RES/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 # 只装在自己电脑上，不花钱。有 Apple 开发证书（免费的 Personal Team 也有）就用它签：
 # 这样“辅助功能”授权一次就一直有效；用临时签名（-）的话每次重新编译都要重新授权。
-IDENTITY=$(security find-identity -v -p codesigning | grep -m1 -o '"Apple Development[^"]*"' | tr -d '"' || true)
+# 钥匙串里有好几张证书时，用 BRIM_SIGN_IDENTITY 指定用哪张（证书的全名），发布包靠它选开发专用的那张。
+IDENTITY="${BRIM_SIGN_IDENTITY:-$(security find-identity -v -p codesigning | grep -m1 -o '"Apple Development[^"]*"' | tr -d '"' || true)}"
 codesign --force --sign "${IDENTITY:--}" "$APP" >/dev/null
 echo "签名：${IDENTITY:-本机临时签名}"
 
