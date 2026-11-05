@@ -14,6 +14,8 @@ APP=build/Brim.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$(swift build -c release --show-bin-path)/$PRODUCT" "$APP/Contents/MacOS/Brim"
+# 去掉调试符号：里面记着编译时的本机路径，会露出用户名和目录
+strip -S -x "$APP/Contents/MacOS/Brim"
 cp "$RES/Info.plist" "$APP/Contents/Info.plist"
 cp "$RES/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 # 只装在自己电脑上，不花钱。有 Apple 开发证书（免费的 Personal Team 也有）就用它签：

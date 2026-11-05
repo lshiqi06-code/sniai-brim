@@ -3,16 +3,26 @@
 # 有“Developer ID Application”证书、并设了 NOTARY_PROFILE（xcrun notarytool store-credentials 存的名字）时，
 # 加上 hardened runtime、送去公证、把公证结果钉进 app，别人下载后能直接打开；
 # 没有的话照旧用 Apple 开发证书签名，别人第一次打开要去“系统设置 › 隐私与安全性”点“仍要打开”。
-# 用法：./scripts/release.sh
+# 用法：BRIM_SIGN_IDENTITY="Apple Development: 名字 (编号)" ./scripts/release.sh
+# 证书的全名会写进包里，所以没有 Developer ID 时必须明确指定用哪张，不替你挑。
 # 收费版借这个脚本打包：BRIM_PACKAGE、BRIM_PRODUCT 同 build_and_run.sh
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
+DEVID=$(security find-identity -v -p codesigning | grep -m1 -o '"Developer ID Application[^"]*"' | tr -d '"' || true)
+if [[ -z "$DEVID" && -z "${BRIM_SIGN_IDENTITY:-}" ]]; then
+  echo "✗ 没有 Developer ID，要用 BRIM_SIGN_IDENTITY 指定签名证书（security find-identity -v -p codesigning 能看到全名）" >&2
+  exit 1
+fi
 "$HERE/build_and_run.sh" --no-open
 cd "${BRIM_PACKAGE:-$HERE/..}"
 APP=build/Brim.app
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist")
 
-DEVID=$(security find-identity -v -p codesigning | grep -m1 -o '"Developer ID Application[^"]*"' | tr -d '"' || true)
+if LC_ALL=C grep -qaF "/Users/" "$APP/Contents/MacOS/Brim"; then
+  echo "✗ 程序里还有本机路径（/Users/...），不打包" >&2
+  exit 1
+fi
+
 if [[ -n "$DEVID" && -n "${NOTARY_PROFILE:-}" ]]; then
   codesign --force --options runtime --timestamp --sign "$DEVID" "$APP"
   ditto -c -k --keepParent "$APP" build/notarize.zip
