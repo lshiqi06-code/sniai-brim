@@ -38,7 +38,6 @@ final class HandoffAnimator {
     private var back: CALayer?
     private var style: HandoffStyle = .island
     private var box: NSRect = .zero
-    private var landed: NSPoint?
     private var tint: NSColor = .white
 
     var isActive: Bool { window != nil }
@@ -269,7 +268,6 @@ final class HandoffAnimator {
     func land(on target: NSRect, then: @escaping () -> Void) {
         guard let icon, let back, let screen = NSScreen.screens.first else { return then() }
         let center = NSPoint(x: target.midX, y: target.midY)
-        landed = center
         // 一开始就朝它隐藏前的位置去了：准确位置差不多就只收个尾，差得远再挪过去
         let shown = (icon.presentation() ?? icon).position
         let near = style == .flight ? hypot(shown.x - local(center).x, shown.y - local(center).y) < 6
@@ -338,7 +336,6 @@ final class HandoffAnimator {
         window = nil
         icon = nil
         back = nil
-        landed = nil
     }
 
     // MARK: 小工具

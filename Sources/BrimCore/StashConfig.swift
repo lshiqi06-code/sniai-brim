@@ -43,7 +43,7 @@ public struct StashConfig: Codable, Equatable, Sendable {
         systemBundles.contains { icon.hasPrefix($0 + "|") }
     }
 
-    /// 图标 id 是“应用|说明|序号”，前半截就是应用的 bundle id
+    /// 图标 id 是“应用|#第几个”（旧版是“应用|说明”），“|”前面就是应用的 bundle id
     public static func app(of icon: String) -> String {
         String(icon.prefix { $0 != "|" })
     }

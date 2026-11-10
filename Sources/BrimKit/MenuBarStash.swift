@@ -62,6 +62,11 @@ final class MenuBarStash {
     /// 有的应用（Clash Verge）要右键过一次才把菜单挂上，读到过一次就记住，不会被误认。
     private(set) var mirrorable = Set(UserDefaults.standard.stringArray(forKey: "stash.mirrorable") ?? [])
 
+    /// 点了才生成菜单、但生成以后读得出来的（记的是“应用|L”“应用|R”，左键右键分开记：Claude 右键是菜单、左键是窗口）。
+    /// 第一次照常用动画在菜单栏上打开，那时发现它的菜单读得出来就记下；以后在整屏幕帘底下点开、读出来、关掉，
+    /// 再从收纳格那一格下面弹一份一样的，菜单栏不动
+    @ObservationIgnored private var dynamicMenus = Set(UserDefaults.standard.stringArray(forKey: "stash.dynamicMenus") ?? [])
+
     /// 打开“菜单只能挂在自己图标上”的 app 时用哪种动画。放在这里界面才会跟着变（存在本机设置里）
     var handoffStyle = HandoffStyle.current {
         didSet { HandoffStyle.current = handoffStyle }
@@ -381,7 +386,8 @@ final class MenuBarStash {
     /// 收纳格面板里点了一个图标，效果要和在菜单栏上点它一样，但菜单栏不动。对所有应用都一样：
     /// 1. 图标上挂着菜单（大部分应用）：读出来，从这一格正下方弹一份一样的，选哪项就在后台按哪项（只按菜单项，不按图标）。面板不收起：
     /// 选了一项面板跟着收起；按 Esc 或点空白只关它的菜单，回到面板。
-    /// 2. 读不到菜单：面板收起，冻住菜单栏后真点（见 pressInPlace）。
+    /// 2. 菜单是点了才生成的、以前读到过（dynamicMenus）：整屏盖一张幕帘，在底下真点开、读出来、关掉，再从这一格下面弹（见 openQuietly）。
+    /// 3. 其余（弹的是面板、窗口，或者第一次遇到）：面板收起，冻住菜单栏后真点，用动画过渡（见 peekAndClick）。
     private func pick(_ icon: KnownIcon, right: Bool, in view: NSView, cell: NSRect) {
         endPeek()
         let app = StashConfig.app(of: icon.id)
@@ -396,6 +402,9 @@ final class MenuBarStash {
                 }
                 return
             }
+        }
+        if isHidden(icon), dynamicMenus.contains(Self.dynamicKey(app, right)), IconCapture.allowed {
+            return openQuietly(icon, right: right, in: view, cell: cell)
         }
         // 读不到菜单：先记下动画从哪出发，面板等菜单栏冻住、动画接上以后再收（见 peekAndClick）
         if isHidden(icon), let win = view.window, let id = openBox, let button = boxItems[id]?.button, let bw = button.window {
@@ -424,17 +433,12 @@ final class MenuBarStash {
             if let item = live.first(where: { $0.id == icon.id }) { open(item, right: right) } else { NSSound.beep() }
             return
         }
-        pressInPlace(icon, right: right)
+        peekAndClick(icon, right: right)
     }
 
     /// 读不到菜单的隐藏图标：冻住菜单栏（盖一张照片），在底下让它真的出现、用你点的那个键真的点一下，用完收回再揭开照片。
     /// 和你在菜单栏上点它完全一样。不在图标隐藏时“后台按”它：各个应用的反应五花八门（面板开了却看不见、
     /// 停在看不见的菜单里、图标一直带着高亮），靠不住。
-    private func pressInPlace(_ icon: KnownIcon, right: Bool) {
-        peekAndClick(icon, right: right)
-    }
-
-    /// 后备：先让它显示出来、等它停稳再像人一样点，菜单关掉后再隐藏。
     private func peekAndClick(_ icon: KnownIcon, right: Bool) {
         // 先拍下菜单栏盖上去（开了屏幕录制才行），底下的变化你就看不到；
         // 冻住以后动画层接在收纳格面板上开始，再收起面板
@@ -502,10 +506,9 @@ final class MenuBarStash {
         }
     }
 
-    /// 替你点开它，并且看着它的菜单：
-    /// - 先像人一样点一下；0.6 秒还没出菜单（也没把它自己的窗口叫到前面），再用辅助功能“按”一次（Tauri、Electron 做的应用常常只认其中一种）。
-    /// - 菜单出现过又关了，就隐藏回去。
-    /// - 认不出菜单时，等你在别处点一下再隐藏；点的正好是这个图标（自己再点一次）就不隐藏。最多显示 2 分钟。
+    /// 替你点开它（像人一样真的点一下），并且看着它的菜单：
+    /// - 菜单、面板出现过又关了，就隐藏回去。
+    /// - 2 秒什么都没弹出来，或者这期间你在别处点了一下，也隐藏回去。
     private func open(_ item: MenuBarIcon, right: Bool) {
         // 它这会儿在菜单栏上看得见：还没截过它本来的样子就先截一张（开了屏幕录制才截；点开以后图标底下有一块高亮，截出来不干净），截完再点。
         // 截过的就直接点，不让你多等
@@ -514,12 +517,19 @@ final class MenuBarStash {
     }
 
     private func click(_ item: MenuBarIcon, right: Bool) {
-        let bundleID = item.bundleID
-        let before = Self.popups(pid: item.pid, bundleID: bundleID)
+        let before = Self.popups(pid: item.pid, bundleID: item.bundleID)
         MenuBarItems.press(item, right: right)
         log.info("替你点了 \(item.id, privacy: .public)，位置 \(Int(item.frame.minX)),\(Int(item.frame.minY))")
         guard peeking != nil else { return }
-        // 计时器和鼠标监听的回调里只用这几样（辅助功能元素本身不能跨线程传，标成只在主线程用）
+        watchPopup(of: item, right: right, before: before)
+    }
+
+    /// 看着刚点开的菜单 / 面板，关了就收回（before 是点之前它已经开着的窗口，不算）
+    private func watchPopup(of item: MenuBarIcon, right: Bool, before: Set<CGWindowID>) {
+        let bundleID = item.bundleID
+        // 辅助功能元素不能跨线程传；计时器的回调都在主线程上
+        nonisolated(unsafe) let item = item
+        var probed = false
         let pid = item.pid, frame = item.frame
         let start = Date()
         var sawMenu: Date?
@@ -536,6 +546,11 @@ final class MenuBarStash {
                 if open {
                     if sawMenu == nil { sawMenu = Date() }
                     goneSince = nil
+                    // 顺便看一眼：它弹出的要是一份读得出来的菜单，记下来，下次直接从收纳格那一格下面弹
+                    if !probed {
+                        probed = true
+                        if let app = bundleID, MenuMirror.readOpened(item) != nil { self.noteDynamic(app, right) }
+                    }
                 } else if let seen = sawMenu {
                     // 面板打开的过程中，窗口可能先闪一个再换成正式的：刚出现时连续 0.6 秒都不在才算真关了；
                     // 已经开了一会儿的，一关就收回
@@ -549,8 +564,6 @@ final class MenuBarStash {
                     // 2 秒什么都没弹出来：这个应用对这一下本来就没反应（比如有的应用右键什么都不做），
                     // 或者它打开的是普通窗口。马上收回，别让菜单栏一直冻着
                     log.info("点了以后没有弹出菜单或面板，收回")
-                    self.endPeek()
-                } else if elapsed > 120 {
                     self.endPeek()
                 }
             }
@@ -589,11 +602,90 @@ final class MenuBarStash {
         guard peeking != nil else { return }
         peeking = nil
         applyHiding()
+        MenuBarFreeze.shared.liftCurtain()
         // 动画回到帽檐；等底下的图标收回、菜单栏排好，再揭开照片
         if HandoffAnimator.shared.isActive {
             HandoffAnimator.shared.finish { if MenuBarFreeze.shared.isFrozen { MenuBarFreeze.shared.thaw(after: 0.6) } }
         } else if MenuBarFreeze.shared.isFrozen {
             MenuBarFreeze.shared.thaw()
+        }
+    }
+
+    // MARK: 点了才生成的菜单
+
+    private static func dynamicKey(_ app: String, _ right: Bool) -> String { "\(app)|\(right ? "R" : "L")" }
+
+    private func noteDynamic(_ app: String, _ right: Bool, _ works: Bool = true) {
+        let key = Self.dynamicKey(app, right)
+        guard dynamicMenus.contains(key) != works else { return }
+        if works { dynamicMenus.insert(key) } else { dynamicMenus.remove(key) }
+        UserDefaults.standard.set(Array(dynamicMenus), forKey: "stash.dynamicMenus")
+        log.info("\(key, privacy: .public)：\(works ? "菜单点开后读得出来，以后从收纳格下面弹" : "这次没读到菜单，改回用动画打开", privacy: .public)")
+    }
+
+    /// 菜单是点了才生成的：整屏盖一张幕帘（一张屏幕的照片，比菜单还高一层），在底下让图标回到菜单栏、真点开、
+    /// 把菜单读出来、马上关掉、图标收回，再揭开幕帘，从收纳格这一格下面弹一份一样的。收纳格面板一直开着，菜单栏看着没动过。
+    /// 没读到（这次弹的不是菜单）就揭开幕帘，照平常那样等它关了再收回，并且忘掉这条记录，下次用动画打开。
+    private func openQuietly(_ icon: KnownIcon, right: Bool, in view: NSView, cell: NSRect) {
+        let app = StashConfig.app(of: icon.id)
+        MenuBarFreeze.shared.freezeWholeScreen { [weak self] covered in
+            guard let self else { return }
+            guard covered else {
+                BoxPanel.current?.close()
+                return self.press(icon, right: right)
+            }
+            let stale = self.live.first { $0.id == icon.id }?.frame
+            self.peeking = app
+            var reached = false
+            // 保险：1.5 秒还没点到它，就算了
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self, !reached, self.peeking == app else { return }
+                    log.error("没能在幕帘底下打开 \(icon.id, privacy: .public)")
+                    self.endPeek()
+                }
+            }
+            self.applyHiding { [weak self] in
+                self?.waitUntilShown(icon, app: app, stale: stale, since: Date()) { item in
+                    guard let self else { return }
+                    reached = true
+                    let before = Self.popups(pid: item.pid, bundleID: item.bundleID)
+                    MenuBarItems.press(item, right: right)
+                    self.readQuietly(item, right: right, before: before, tries: 12, in: view, cell: cell)
+                }
+            }
+        }
+    }
+
+    /// 点开以后每 0.04 秒找一次它的菜单，最多找 12 次
+    private func readQuietly(_ item: MenuBarIcon, right: Bool, before: Set<CGWindowID>, tries: Int, in view: NSView, cell: NSRect) {
+        nonisolated(unsafe) let item = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, let app = self.peeking, app == item.bundleID else { return }
+                guard let (menu, source) = MenuMirror.readOpened(item) else {
+                    if tries > 1 { return self.readQuietly(item, right: right, before: before, tries: tries - 1, in: view, cell: cell) }
+                    // 这次弹的不是菜单：让你看到它，照平常那样等它关
+                    self.noteDynamic(app, right, false)
+                    MenuBarFreeze.shared.liftCurtain()
+                    BoxPanel.current?.close()
+                    return self.watchPopup(of: item, right: right, before: before)
+                }
+                log.info("在幕帘底下读到 \(item.id, privacy: .public) 的菜单（\(menu.items.count) 项）")
+                MenuMirror.cancel(source)
+                self.peeking = nil
+                self.applyHiding()
+                // 等它的菜单淡出再揭开幕帘；菜单栏那一条多盖一会儿，等图标收回去、旁边的图标靠拢
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+                    MenuBarFreeze.shared.liftCurtain()
+                    MenuBarFreeze.shared.thaw(after: 0.7)
+                    // 面板这时已经收起了（你点了别处）就不弹
+                    guard view.window?.isVisible == true else { return }
+                    if menu.popUp(positioning: nil, at: NSPoint(x: cell.minX, y: cell.maxY + 2), in: view) {
+                        BoxPanel.current?.close()
+                    }
+                }
+            }
         }
     }
 
@@ -717,25 +809,5 @@ final class MenuBarStash {
         if let config, let data = try? JSONEncoder().encode(config) {
             UserDefaults.standard.set(data, forKey: Self.configKey)
         }
-    }
-
-    // MARK: 小图
-
-    /// 帽檐：一道屋檐，下面三个小方块
-    static func eave(dots: Bool) -> NSImage {
-        let img = NSImage(size: NSSize(width: 16, height: 16), flipped: true) { _ in
-            NSColor.black.set()
-            let roof = NSBezierPath()
-            roof.move(to: NSPoint(x: 1.5, y: 8))
-            roof.line(to: NSPoint(x: 8, y: 3))
-            roof.line(to: NSPoint(x: 14.5, y: 8))
-            roof.lineWidth = 1.6
-            roof.lineJoinStyle = .miter
-            roof.stroke()
-            if dots { for x in [3.5, 7.0, 10.5] { NSRect(x: x, y: 10.5, width: 2, height: 2).fill() } }
-            return true
-        }
-        img.isTemplate = true
-        return img
     }
 }

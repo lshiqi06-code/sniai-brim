@@ -51,14 +51,32 @@ enum Glyph {
         ],
     ]
 
+    /// 帽檐：一道屋檐，下面三个小方块
+    private static var eave: NSImage {
+        let img = NSImage(size: NSSize(width: 16, height: 16), flipped: true) { _ in
+            NSColor.black.set()
+            let roof = NSBezierPath()
+            roof.move(to: NSPoint(x: 1.5, y: 8))
+            roof.line(to: NSPoint(x: 8, y: 3))
+            roof.line(to: NSPoint(x: 14.5, y: 8))
+            roof.lineWidth = 1.6
+            roof.lineJoinStyle = .miter
+            roof.stroke()
+            for x in [3.5, 7.0, 10.5] { NSRect(x: x, y: 10.5, width: 2, height: 2).fill() }
+            return true
+        }
+        img.isTemplate = true
+        return img
+    }
+
     static let symbols: [String: String] = [
         "network": "network", "tools": "wrench.and.screwdriver", "sparkles": "sparkles",
         "tray": "tray", "briefcase": "briefcase",
     ]
 
     /// 菜单栏用的小图（模板图，跟着系统深浅色变）
-    static func image(_ id: String, open: Bool = false) -> NSImage {
-        if id == "eave" { return MenuBarStash.eave(dots: !open) }
+    static func image(_ id: String) -> NSImage {
+        if id == "eave" { return eave }
         if let name = symbols[id], let img = NSImage(systemSymbolName: name, accessibilityDescription: nil) {
             let sized = img.withSymbolConfiguration(.init(pointSize: 13, weight: .regular)) ?? img
             sized.isTemplate = true

@@ -24,9 +24,6 @@ public final class Lang: @unchecked Sendable {
         case .system: !(Locale.preferredLanguages.first ?? "en").hasPrefix("zh")
         }
     }
-
-    /// 日期里“周几”这类字跟着界面语言走
-    public var locale: Locale { Locale(identifier: isEnglish ? "en_US" : "zh_CN") }
 }
 
 /// 一句界面上的字，中英各一份

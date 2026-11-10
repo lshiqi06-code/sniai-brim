@@ -8,7 +8,7 @@ Put your menu bar icons into boxes you set up yourself. Click a box and the icon
 
 - **Boxes, your way.** Make a few boxes in the menu bar, give each one a look (eave, pine, stone lantern, fish, stone, network, tools, AI, drawer, work) and decide which icons live where. Apple's own icons stay put.
 - **The menu bar never jumps.** Click a hidden icon inside a box and its menu opens right under that box. The icon doesn't flash back into the menu bar first.
-- **Apps that only open from their own icon.** Some apps (Claude, Outlook) draw their menus themselves and can only open them from their own spot. brim lays a snapshot over the menu bar (this needs the optional Screen Recording permission; without it you'll see a brief flicker), lets the icon out underneath, and plays a short animation from the box to that spot while the app opens its menu. You choose between two animations, *island* and *return*.
+- **Apps that only open from their own icon.** Some apps build their menu only when clicked, or open a panel instead of a menu (Claude, Outlook). brim lays a snapshot over the menu bar (this needs the optional Screen Recording permission; without it you'll see a brief flicker), lets the icon out underneath, and plays a short animation from the box to that spot while the app opens. You choose between two animations, *island* and *return*. If what opened turns out to be a readable menu, brim remembers that: from then on it opens that menu out of sight, reads it, and shows it right under the box like any other.
 - **Calls come first.** While your camera or microphone is in use, every icon comes back so the system's call controls stay visible. Hiding resumes when the call ends.
 - **Icons as you know them.** With the optional Screen Recording permission, boxes show each icon the way it looks in your menu bar instead of the app icon.
 - English and Chinese, switchable in Settings.
@@ -48,7 +48,7 @@ swift test
 ./scripts/release.sh              # build/Brim-<version>.zip and its SHA-256
 ```
 
-`BrimKit` has one extension point, `BoxAccessory` in `Sources/BrimKit/Extensions.swift`: an extra section under a box's icons.
+`BrimKit` has two extension points in `Sources/BrimKit/Extensions.swift`: `BoxAccessory`, an extra section under a box's icons, and `BoxGlyph`, an extra look for a box.
 
 ## License
 
@@ -64,7 +64,7 @@ Code: MIT, © 2026 lblus. The name *sniai brim*, the app icon and the box design
 
 - **收纳格自己建。** 建几个格子，每个挑一个样子（帽檐、松、石灯笼、鱼、石头、网络、工具、AI、抽屉、工作），再决定每个图标放进哪一格。苹果自己的图标不动。
 - **菜单栏不跳。** 在收纳格里点一个藏着的图标，它的菜单直接从这一格下面弹出来，图标不用先回到菜单栏上闪一下。
-- **只认自己图标的 app。** 有的 app（Claude、Outlook）菜单是自己画的，只能从它自己的位置打开。brim 先给菜单栏拍一张照片盖住（要可选的“屏幕录制”权限，没开的话这一下会闪），在底下让它露出来，再用一段动画把“从收纳格到它那里”演出来，菜单就从那里弹出。动画有“岛”和“归位”两种，在设置里选。
+- **只认自己图标的 app。** 有的 app 点了才生成菜单，或者弹的是面板不是菜单（Claude、Outlook）。brim 先给菜单栏拍一张照片盖住（要可选的“屏幕录制”权限，没开的话这一下会闪），在底下让它露出来，再用一段动画把“从收纳格到它那里”演出来，它就从那里弹出。动画有“岛”和“归位”两种，在设置里选。如果弹出来的是一份读得出来的菜单，brim 会记住：以后在你看不到的地方点开、读出来，直接从收纳格下面弹，和别的图标一样。
 - **通话优先。** 摄像头或麦克风在用时，所有图标暂时回到菜单栏，系统的通话控件不会被藏掉；通话结束自动收回。
 - **图标还是熟悉的样子。** 打开可选的“屏幕录制”后，收纳格里显示图标在菜单栏上本来的样子，而不是应用的大图标。
 - 中文、English，在设置里切换。

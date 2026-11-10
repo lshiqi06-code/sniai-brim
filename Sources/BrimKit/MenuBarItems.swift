@@ -4,7 +4,7 @@ import ApplicationServices
 
 /// 菜单栏右边的一个图标（别的应用放的状态栏图标）。
 struct MenuBarIcon: Identifiable, Equatable {
-    /// 应用 + 图标描述，换一次开机也认得出来，用来记住它放在哪个收纳格
+    /// “应用|#第几个”，换一次开机也认得出来，用来记住它放在哪个收纳格
     let id: String
     let appName: String
     let bundleID: String?
@@ -13,12 +13,6 @@ struct MenuBarIcon: Identifiable, Equatable {
     let label: String
     let frame: CGRect
     let element: AXUIElement
-
-    /// 给人看的名字：系统图标用它自己的说明（“简体拼音”“搜索”），别的应用用应用名
-    var displayName: String {
-        if bundleID?.hasPrefix("com.apple.") == true { return label.isEmpty ? L("系统图标", "System icon") : label }
-        return appName.replacingOccurrences(of: "AppLauncher", with: "").replacingOccurrences(of: "Launcher", with: "")
-    }
 
     static func == (a: MenuBarIcon, b: MenuBarIcon) -> Bool { a.id == b.id && a.frame == b.frame }
 }
