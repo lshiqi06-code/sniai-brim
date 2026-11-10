@@ -20,9 +20,14 @@ Put your menu bar icons into boxes you set up yourself. Click a box and the icon
 
 ## Install
 
-1. Download the latest `Brim-x.y.z.zip` from Releases and move `Brim.app` into `/Applications`.
-2. brim isn't notarized yet, so the first time you open it macOS will stop it. Go to **System Settings › Privacy & Security** and click **Open Anyway**.
-3. Allow **Accessibility** when asked. brim uses it to read the menu bar icons and to open their menus for you. Screen Recording is optional.
+1. Download the latest `Brim-x.y.z.dmg` from Releases, open it and drag brim into Applications. The window that opens shows these same steps.
+2. brim isn't notarized yet, so the first time you open it macOS will stop it. This is expected:
+   1. Open brim. macOS says it can't verify it: click **Done**.
+   2. Go to **System Settings → Privacy & Security** and scroll to the bottom.
+   3. Next to brim, click **Open Anyway** and enter your password. You only do this once.
+3. Allow **Accessibility** when asked. brim opens the right settings page and shows you what to do. It uses Accessibility to read the menu bar icons and to open their menus for you. Screen Recording is optional.
+
+![Opening brim for the first time](Resources/install-guide/first-launch.png)
 
 To uninstall, quit brim (right-click a box › Quit brim) and delete the app. Your menu bar goes back to how it was as soon as brim quits.
 
@@ -45,7 +50,7 @@ You need Xcode.
 ```bash
 ./scripts/build_and_run.sh        # build, sign with your Apple Development certificate if you have one, install to /Applications, open
 swift test
-./scripts/release.sh              # build/Brim-<version>.zip and its SHA-256
+./scripts/release.sh              # build/Brim-<version>.zip, the .dmg with the install guide, and their SHA-256
 ```
 
 `BrimKit` has two extension points in `Sources/BrimKit/Extensions.swift`: `BoxAccessory`, an extra section under a box's icons, and `BoxGlyph`, an extra look for a box.
@@ -76,9 +81,14 @@ Code: MIT, © 2026 lblus. The name *sniai brim*, the app icon and the box design
 
 ### 安装
 
-1. 在 Releases 下载最新的 `Brim-x.y.z.zip`，把 `Brim.app` 拖进“应用程序”。
-2. brim 还没有经过苹果公证，第一次打开会被系统拦下：到“系统设置 › 隐私与安全性”里点“仍要打开”。
-3. 按提示打开“辅助功能”：brim 靠它读出菜单栏上有哪些图标、替你打开它们的菜单。“屏幕录制”可以不开。
+1. 在 Releases 下载最新的 `Brim-x.y.z.dmg`，打开后把 brim 拖进“应用程序”。打开的那个窗口上就印着下面这几步。
+2. brim 还没有经过苹果公证，第一次打开会被系统拦下，这是正常的：
+   1. 打开 brim，系统提示无法验证：点“完成”。
+   2. 打开“系统设置 → 隐私与安全性”，拉到最下面。
+   3. 在 brim 那一行点“仍要打开”，输入密码。只用做这一次。
+3. 按提示打开“辅助功能”：brim 会替你打开那一页设置，并在旁边告诉你怎么做。brim 靠它读出菜单栏上有哪些图标、替你打开它们的菜单。“屏幕录制”可以不开。
+
+![第一次打开 brim](Resources/install-guide/first-launch.png)
 
 卸载：右键任意一个收纳格 › 退出 brim，再删掉 app。brim 一退出，菜单栏就回到原来的样子。
 

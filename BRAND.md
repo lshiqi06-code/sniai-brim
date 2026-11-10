@@ -4,7 +4,8 @@ The MIT License in [LICENSE](LICENSE) covers the code in this repository. It doe
 
 - the name "sniai brim";
 - the app icon (`Resources/AppIcon.icns`);
-- the box designs (the pixel maps in `Sources/BrimKit/Glyphs.swift`).
+- the box designs (the pixel maps in `Sources/BrimKit/Glyphs.swift`);
+- the install guide artwork (`Resources/install-guide/`).
 
 You may use these assets to build and run brim from this repository. If you distribute a modified version, replace them with your own and give it a different name.
 
@@ -14,6 +15,7 @@ You may use these assets to build and run brim from this repository. If you dist
 
 - 名称“sniai brim”；
 - App 图标（`Resources/AppIcon.icns`）；
-- 收纳格的样子（`Sources/BrimKit/Glyphs.swift` 里的像素图）。
+- 收纳格的样子（`Sources/BrimKit/Glyphs.swift` 里的像素图）；
+- 安装指引的图（`Resources/install-guide/`）。
 
 你可以用它们从这个仓库编译和运行 brim。如果要分发修改过的版本，请换成你自己的图标和样子，并改一个名字。

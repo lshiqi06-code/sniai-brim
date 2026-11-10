@@ -1,5 +1,6 @@
 #!/bin/zsh
-# 打发布包：编译、打包成 Brim.app、签名，压成 build/Brim-版本号.zip，写出 SHA-256。
+# 打发布包：编译、打包成 Brim.app、签名，压成 build/Brim-版本号.zip，写出 SHA-256；
+# 再做一个安装盘 build/Brim-版本号.dmg，打开就是安装指引（见 make_dmg.sh）。
 # 有“Developer ID Application”证书、并设了 NOTARY_PROFILE（xcrun notarytool store-credentials 存的名字）时，
 # 加上 hardened runtime、送去公证、把公证结果钉进 app，别人下载后能直接打开；
 # 没有的话照旧用 Apple 开发证书签名，别人第一次打开要去“系统设置 › 隐私与安全性”点“仍要打开”。
@@ -40,3 +41,4 @@ ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
 (cd build && shasum -a 256 "Brim-$VERSION.zip" > "Brim-$VERSION.zip.sha256")
 echo "$ZIP（$NOTE）"
 cat "$ZIP.sha256"
+"$HERE/make_dmg.sh"
