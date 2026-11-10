@@ -67,21 +67,36 @@ enum MenuBarItems {
         return out.sorted { $0.frame.minX < $1.frame.minX }
     }
 
+    /// 让 brim 不在前台时也能把鼠标指针藏起来。系统默认只听前台应用的，后台应用调“隐藏指针”不起作用
+    /// （以前就是这样：指针看得见地跳到图标上又跳回来）。这是窗口服务的私有开关，运行时查，找不到就算了。只设一次
+    private static let cursorHidesInBackground: Bool = {
+        typealias Connection = @convention(c) () -> Int32
+        typealias SetProperty = @convention(c) (Int32, Int32, CFString, CFTypeRef) -> Int32
+        let handle = dlopen(nil, RTLD_NOW)
+        guard let c = dlsym(handle, "_CGSDefaultConnection"), let s = dlsym(handle, "CGSSetConnectionProperty") else { return false }
+        let cid = unsafeBitCast(c, to: Connection.self)()
+        return unsafeBitCast(s, to: SetProperty.self)(cid, cid, "SetsCursorInBackground" as CFString, kCFBooleanTrue) == 0
+    }()
+
     /// 替用户“点一下”这个图标，打开它自己的菜单。
     /// 不用辅助功能里的“按下”动作：Clash Verge 这类（Tauri、Electron 做的）应用不理它。改成在图标上真的点一下，再把鼠标放回原处。
+    /// 把点击直接发给那个应用（不经过鼠标）试过，不行：macOS 27 上菜单栏图标不在应用自己的窗口里。
     /// right：右键（有的应用右键是另一份菜单）
-    /// 点的时候先把光标藏起来，点完马上放回原处再显示：你看不到它跳到那个图标上又跳回来
+    /// 点的时候先把指针藏起来，点完马上放回原处再显示：你看不到它跳到那个图标上又跳回来
     static func press(_ icon: MenuBarIcon, right: Bool = false) {
         let src = CGEventSource(stateID: .hidSystemState)
         let old = CGEvent(source: nil)?.location ?? .zero
         let p = CGPoint(x: icon.frame.midX, y: icon.frame.midY)
         let types: [CGEventType] = right ? [.rightMouseDown, .rightMouseUp] : [.leftMouseDown, .leftMouseUp]
+        _ = cursorHidesInBackground
         CGDisplayHideCursor(CGMainDisplayID())
         for type in types {
             CGEvent(mouseEventSource: src, mouseType: type, mouseCursorPosition: p, mouseButton: right ? .right : .left)?.post(tap: .cghidEventTap)
             usleep(30_000)
         }
         CGWarpMouseCursorPosition(old)
+        // 挪完指针，系统默认会让鼠标“愣”四分之一秒不跟手，取消掉
+        CGAssociateMouseAndMouseCursorPosition(1)
         CGDisplayShowCursor(CGMainDisplayID())
     }
 
