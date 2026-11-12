@@ -2,6 +2,8 @@
 
 Put your menu bar icons into boxes you set up yourself. Click a box and the icons inside are right there, menus included.
 
+![brim tucks menu bar icons under the brim; a click opens the box, and an app's menu opens right under it](docs/demo.gif)
+
 [中文说明](#中文)
 
 ## What it does
@@ -64,6 +66,8 @@ Code: MIT, © 2026 lblus. The name *sniai brim*, the app icon and the box design
 ## 中文
 
 菜单栏上的图标，按你自己的习惯收进几个收纳格。点开一格，里面的图标连同它们的菜单都在手边。
+
+![brim 把菜单栏图标收进帽檐，点一下打开收纳格，应用的菜单直接从格子下面弹出](docs/demo.gif)
 
 ### 能做什么
 
